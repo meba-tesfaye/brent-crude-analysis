@@ -59,3 +59,4 @@ brent-crude-analysis/
 ├── env/                   # Isolated local virtual environment (ignored)
 ├── requirements.txt       # Strict package pinning
 └── README.md              # Project documentation
+* **Correlation vs Causal Impact Disclaimers:** The change point model isolates structural discontinuities strictly as mathematical shifts across time. These calculations represent chronological correlation and data-level variance partition points. They do not automatically imply or prove direct standalone causality without corresponding validation against external narrative events (such as those outlined in `data/events.csv`).
