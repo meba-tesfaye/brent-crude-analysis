@@ -1,80 +1,56 @@
-# scripts/run_analysis.py
 import sys
 import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import json
 import pandas as pd
-import numpy as np
-import pymc as pm
-import arviz as az
-from src.data_processing import load_and_clean_data, run_stationarity_test
 
-def execute_bayesian_break_search():
-    raw_path = "data/raw_brent_prices.csv"
+# Automatically append repository root to Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.data_processing import run_stationarity_test
+from src.model_building import run_bayesian_change_point
+
+def main():
+    # Define relative paths
+    data_path = os.path.join("data", "raw_brent_prices.csv")
+    output_json_path = os.path.join("data", "model_output.json")
     
-    # Robust Error Handling for File Processing
-    try:
-        if os.path.exists(raw_path):
-            df = load_and_clean_data(raw_path)
-        else:
-            print("[Pipeline Note] data/raw_brent_prices.csv not found. Simulating data matrix.")
-            np.random.seed(42)
-            base_idx = pd.date_range(start="2020-01-01", periods=100, freq='D')
-            mock_p = np.concatenate([np.random.normal(65.0, 2.0, 45), np.random.normal(40.0, 3.0, 55)])
-            df = pd.DataFrame({'Date': base_idx, 'Price': mock_p})
-            df['Log_Return'] = np.log(df['Price']) - np.log(df['Price'].shift(1))
-            df = df.dropna().reset_index(drop=True)
-    except Exception as e:
-        print(f"[Fatal Error] Failed to read or parse input data stream: {str(e)}")
-        sys.exit(1)
+    # Verify data asset presence
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"Missing mandatory data file asset: {data_path}")
+        
+    print(f"Loading raw price data from {data_path}...")
+    df = pd.read_csv(data_path)
+    df['Date'] = pd.to_datetime(df['Date'], format='mixed')
+    df = df.sort_values('Date').reset_index(drop=True)
     
+    # Stage 1: Stationarity Verification
+    print("\n--- Executing Stage 1: Stationarity Verification ---")
+    run_stationarity_test(df['Price'])
+    
+    # Stage 2: Bayesian Change Point Sampling (Task 2)
+    print("\n--- Executing Stage 2: Bayesian Change Point Sampling ---")
     try:
-        run_stationarity_test(df['Price'], "Raw Price Values")
+        metrics, model, trace = run_bayesian_change_point(df['Price'])
         
-        df['Time_Index'] = np.arange(len(df))
-        t_arr = df['Time_Index'].values
-        y_arr = df['Price'].values
+        # Map the inferred break index to an explicit calendar date
+        break_idx = metrics["inferred_break_index"]
+        inferred_date = str(df['Date'].iloc[break_idx].date())
+        metrics["inferred_break_date"] = inferred_date
         
-        print("[PyMC Model] Setting up Bayesian Switchpoint Architecture...")
-        with pm.Model() as cp_model:
-            tau = pm.DiscreteUniform("tau", lower=0, upper=len(t_arr) - 1)
-            mu_1 = pm.Normal("mu_1", mu=float(y_arr.mean()), sigma=float(y_arr.std()))
-            mu_2 = pm.Normal("mu_2", mu=float(y_arr.mean()), sigma=float(y_arr.std()))
-            sigma = pm.HalfNormal("sigma", sigma=float(y_arr.std()))
-            
-            mu_assigned = pm.math.switch(tau > t_arr, mu_1, mu_2)
-            y_obs = pm.Normal("y_obs", mu=mu_assigned, sigma=sigma, observed=y_arr)
-            
-            trace = pm.sample(draws=200, tune=100, chains=1, random_seed=42, return_inferencedata=True, progressbar=False)
+        print("\nInference Complete! Results Summary:")
+        print(f"  - Structural Break Date: {inferred_date} (Index {break_idx})")
+        print(f"  - Pre-Break Mean Price: ${metrics['mu_before']:.2f}")
+        print(f"  - Post-Break Mean Price: ${metrics['mu_after']:.2f}")
+        print(f"  - Change Magnitude: {metrics['percentage_structural_shift']:.2f}%")
         
-        summary = az.summary(trace, var_names=["mu_1", "mu_2", "tau"])
-        tau_values = trace.posterior['tau'].values.flatten()
-        tau_mode = int(pd.Series(tau_values).mode()[0])
-        
-        break_date = str(df['Date'].iloc[tau_mode].strftime('%Y-%m-%d'))
-        m1_val = float(summary.loc['mu_1', 'mean'])
-        m2_val = float(summary.loc['mu_2', 'mean'])
-        pct_shift = ((m2_val - m1_val) / m1_val) * 100
-        
-        output_payload = {
-            "inferred_break_index": tau_mode,
-            "inferred_break_date": break_date,
-            "mu_before": m1_val,
-            "mu_after": m2_val,
-            "percentage_structural_shift": pct_shift
-        }
-        
-        os.makedirs("data", exist_ok=True)
-        with open("data/model_output.json", "w") as f:
-            json.dump(output_payload, f, indent=4)
-            
-        print(f"[Success] Pipeline executed with zero exceptions. Artifact exported.")
+        # Save output for the Task 3 Dashboard interface
+        with open(output_json_path, 'w') as f:
+            json.dump(metrics, f, indent=4)
+        print(f"\nSuccessfully materialized model parameters to: {output_json_path}")
         
     except Exception as e:
-        print(f"[Model Error] MCMC sampling optimization failed: {str(e)}")
-        sys.exit(1)
+        print(f"\n[CRITICAL RUNTIME ERROR] Sampling pipeline failed: {str(e)}")
+        raise e
 
 if __name__ == "__main__":
-    execute_bayesian_break_search()
+    main()

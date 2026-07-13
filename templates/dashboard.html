@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brent Crude Bayesian Change Point Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Header -->
+        <header class="mb-8 border-b border-gray-800 pb-6">
+            <h1 class="text-3xl font-extrabold tracking-tight text-white">Brent Crude Oil structural Analysis</h1>
+            <p class="text-gray-400 mt-2">Interactive presentation of Bayesian Switchpoint Architecture results.</p>
+        </header>
+
+        <!-- KPI Summary Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-sm font-medium text-gray-400 uppercase">Structural Break Date</p>
+                <p id="kpi-date" class="text-xl font-bold mt-2 text-indigo-400">Loading...</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-sm font-medium text-gray-400 uppercase">Pre-Break Mean Price</p>
+                <p id="kpi-mu-before" class="text-2xl font-bold mt-2 text-emerald-400">Loading...</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-sm font-medium text-gray-400 uppercase">Post-Break Mean Price</p>
+                <p id="kpi-mu-after" class="text-2xl font-bold mt-2 text-rose-400">Loading...</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-sm font-medium text-gray-400 uppercase">Regime Shift Magnitude</p>
+                <p id="kpi-shift" class="text-2xl font-bold mt-2 text-amber-400">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Analytical Chart Area -->
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-md">
+            <h3 class="text-lg font-semibold text-white mb-4">Historical Time Series & Regime Boundaries</h3>
+            <div class="relative w-full h-[500px]">
+                <canvas id="timeSeriesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Runtime Logic -->
+    <script>
+        async function initDashboard() {
+            try {
+                // Fetch internal APIs simultaneously 
+                const [metricsRes, pricesRes] = await Promise.all([
+                    fetch('/api/metrics'),
+                    fetch('/api/prices')
+                ]);
+
+                const metrics = await metricsRes.json();
+                const priceData = await pricesRes.json();
+
+                // 1. Populate UI Metric Cards
+                document.getElementById('kpi-date').innerText = metrics.inferred_break_date;
+                document.getElementById('kpi-mu-before').innerText = `$${metrics.mu_before.toFixed(2)}`;
+                document.getElementById('kpi-mu-after').innerText = `$${metrics.mu_after.toFixed(2)}`;
+                document.getElementById('kpi-shift').innerText = `+${metrics.percentage_structural_shift.toFixed(1)}%`;
+
+                // 2. Format Data Arrays for Chart Rendering
+                const labels = priceData.map(d => d.date);
+                const actualPrices = priceData.map(d => d.price);
+                
+                // Build regime line overlay vectors 
+                const breakDateStr = metrics.inferred_break_date;
+                const baselineModelLine = priceData.map(d => {
+                    return d.date < breakDateStr ? metrics.mu_before : metrics.mu_after;
+                });
+
+                // 3. Render Interactive Chart.js Object Instance
+                const ctx = document.getElementById('timeSeriesChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Actual Spot Price ($)',
+                                data: actualPrices,
+                                borderColor: 'rgba(99, 102, 241, 0.4)', /* Indigo tinted */
+                                borderWidth: 1.5,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: 'Bayesian Mean Regimes',
+                                data: baselineModelLine,
+                                borderColor: '#f59e0b', /* Solid Amber */
+                                borderWidth: 3,
+                                pointRadius: 0,
+                                borderDash: [5, 5],
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { 
+                                grid: { color: '#374151' },
+                                ticks: { color: '#9ca3af', maxTicksLimit: 12 }
+                            },
+                            y: { 
+                                grid: { color: '#374151' },
+                                ticks: { color: '#9ca3af' }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#f3f4f6' } }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Initialization Failed:", error);
+            }
+        }
+
+        // Run instantiation on DOM layout complete
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
