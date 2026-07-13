@@ -1,36 +1,24 @@
 import pandas as pd
-import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
-def load_and_clean_data(filepath):
-    """Loads, cleans, and computes daily log returns for Brent Crude data."""
-    print(f"[Pipeline] Processing raw time series data: {filepath}")
-    df = pd.read_csv(filepath)
+def run_adf_test(series):
+    """
+    Executes an Augmented Dickey-Fuller test to evaluate timeseries stationarity.
+    Returns True if stationary, False if non-stationary.
+    """
+    print("[Diagnostics] Running Augmented Dickey-Fuller Test on price series...")
+    result = adfuller(series.dropna())
     
-    # Clean dates
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    df = df.dropna(subset=['Date']).sort_values('Date').reset_index(drop=True)
+    adf_stat = result[0]
+    p_value = result[1]
     
-    # Clean numeric prices
-    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
-    df = df.dropna(subset=['Price']).reset_index(drop=True)
+    print(f" -> ADF Statistic: {adf_stat:.4f}")
+    print(f" -> p-value: {p_value:.4e}")
     
-    # Compute daily log returns to control for variance clustering
-    df['Log_Return'] = np.log(df['Price']) - np.log(df['Price'].shift(1))
-    
-    return df.dropna().reset_index(drop=True)
-
-def run_stationarity_test(series_data, name="Series"):
-    """Performs the Augmented Dickey-Fuller diagnostic test."""
-    print(f"[Diagnostics] Running Augmented Dickey-Fuller Test on: {name}")
-    res = adfuller(series_data.values)
-    
-    metrics = {
-        'ADF Statistic': res[0],
-        'p-value': res[1],
-        'Stationary': bool(res[1] < 0.05)
-    }
-    
-    print(f" -> ADF Stat: {metrics['ADF Statistic']:.4f}, p-value: {metrics['p-value']:.4e}")
-    print(f" -> Stationary: {metrics['Stationary']}")
-    return metrics
+    # Critical threshold rejection at alpha = 5%
+    if p_value <= 0.05:
+        print(" -> Stationary: True")
+        return True
+    else:
+        print(" -> Stationary: False (Unit root detected, series has trending properties)")
+        return False

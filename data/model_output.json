@@ -1,7 +1,13 @@
 {
-    "inferred_break_index": 4521,
-    "mu_before": 21.421,
-    "mu_after": 75.605,
-    "percentage_structural_shift": 252.94804164137997,
+    "inferred_tau_index": 4521,
+    "mu_before": 21.413,
+    "mu_after": 75.61,
+    "percentage_structural_shift": 253.1032550319899,
+    "diagnostics": {
+        "rhat_tau": 1.0,
+        "rhat_mu1": 1.0,
+        "rhat_mu2": 1.0,
+        "chains_converged": true
+    },
     "inferred_break_date": "2005-02-24"
 }
