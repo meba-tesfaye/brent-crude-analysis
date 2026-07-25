@@ -1,6 +1,6 @@
 # Brent Crude Oil Structural Break Analysis & Dashboard
 
-![CI Pipeline](https://github.com/meba-tesfaye/brent-crude-analysis/actions/workflows/ci.yml/badge.svg)
+![Python CI Pipeline](https://github.com/meba-tesfaye/brent-crude-analysis/actions/workflows/python-app.yml/badge.svg)
 
 An end-to-end data analytics and advanced statistical pipeline that detects structural regime shifts in historical Brent Crude Oil spot prices. The project couples a classical econometric exploratory framework with a **Bayesian Switchpoint Architecture** in PyMC, serving the final insights through an interactive **Flask & Chart.js** dashboard.
 
