@@ -1,37 +1,40 @@
 import os
 import json
 import pandas as pd
-from flask import Flask, jsonify
+from flask import Flask, render_template, jsonify
 
-app = Flask(__name__)
-
-# Apply global CORS rule transformations to permit frontend data cross-fetching
-@app.after_request
-def apply_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    response.headers["Access-Control-Allow-Methods"] = "GET"
-    return response
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Set up paths relative to the project root
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 DATA_PATH = os.path.join(BASE_DIR, "data", "raw_brent_prices.csv")
-EVENTS_PATH = os.path.join(BASE_DIR, "data", "significant_events.csv")
 METRICS_PATH = os.path.join(BASE_DIR, "data", "model_output.json")
+EVENTS_PATH = os.path.join(BASE_DIR, "data", "events.csv") # or your events file path
 
-@app.route('/api/metrics')
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+
+# 1. Main Dashboard View Route (Fixes the 404 error!)
+@app.route("/")
+def index():
+    return render_template("dashboard.html")
+
+# 2. API Endpoints
+@app.route("/api/metrics")
 def get_metrics():
     if not os.path.exists(METRICS_PATH):
         return jsonify({"error": "Model summary parameters missing"}), 404
-    with open(METRICS_PATH, 'r') as f:
+    with open(METRICS_PATH, "r") as f:
         return jsonify(json.load(f))
 
-@app.route('/api/prices')
+@app.route("/api/prices")
 def get_prices():
     try:
+        if not os.path.exists(DATA_PATH):
+            return jsonify({"error": f"Data file missing at {DATA_PATH}"}), 404
+            
         df = pd.read_csv(DATA_PATH)
-        df['Date'] = pd.to_datetime(df['Date'], format='mixed')
-        df = df.sort_values('Date')
-        df_weekly = df.resample('W', on='Date').mean().reset_index()
+        df["Date"] = pd.to_datetime(df["Date"], format="mixed")
+        df = df.sort_values("Date")
+        df_weekly = df.resample("W", on="Date").mean().reset_index()
         formatted_data = [
             {"date": row["Date"].strftime("%Y-%m-%d"), "price": float(row["Price"])}
             for _, row in df_weekly.iterrows()
@@ -40,12 +43,13 @@ def get_prices():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/events')
+@app.route("/api/events")
 def get_events():
     if not os.path.exists(EVENTS_PATH):
         return jsonify([])
     df = pd.read_csv(EVENTS_PATH)
-    return jsonify(df.to_dict(orient='records'))
+    return jsonify(df.to_dict(orient="records"))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True, port=5000)
+

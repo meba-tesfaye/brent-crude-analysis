@@ -16,11 +16,12 @@ Identifying the exact date and magnitude of a structural break enables energy ri
 ## 📊 Key Analytical Insights
 The model analyzed **9,011 daily market trading entries** from May 1987 to November 2022 and successfully captured a massive macroeconomic regime shift:
 * **Inferred Structural Break Date:** `2005-02-24`
-* **Pre-Break Baseline Mean Price:** `$21.42`
+* **Pre-Break Baseline Mean Price:** `$21.41`
 * **Post-Break Baseline Mean Price:** `$75.61`
-* **Long-Term Regime Shift Magnitude:** `+252.9%`
+* **Long-Term Regime Shift Magnitude:** `+253.1%`
 
 This shift perfectly mirrors the mid-2000s commodities boom, capturing the permanent transition of global crude prices driven by surging demand from emerging markets and tightening global capacity.
+
 
 ---
 
