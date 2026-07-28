@@ -22,20 +22,34 @@ The model analyzed **9,011 daily market trading entries** from May 1987 to Novem
 
 This shift perfectly mirrors the mid-2000s commodities boom, capturing the permanent transition of global crude prices driven by surging demand from emerging markets and tightening global capacity.
 
-
 ---
 
-## 🚀 Quick Start
+## 📁 Project Structure
 
-### 1. Prerequisites & Setup
-```bash
-# Clone the repository
-git clone [https://github.com/meba-tesfaye/brent-crude-analysis.git](https://github.com/meba-tesfaye/brent-crude-analysis.git)
-cd brent-crude-analysis
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+```text
+brent-crude-analysis/
+├── .github/
+│   └── workflows/
+│       └── unittests.yml          # CI/CD workflow running pytest on push
+├── .vscode/                       # VS Code workspace configurations
+├── data/
+│   ├── raw_brent_prices.csv      # Full historical dataset (9,011 rows)
+│   └── model_output.json         # Materialized Bayesian inference parameters
+├── frontend/                      # Decoupled React analytical dashboard UI
+├── notebooks/                     # Exploratory analysis & PyMC prototyping
+├── scripts/
+│   └── run_analysis.py            # Core execution orchestration runner
+├── src/
+│   ├── __init__.py
+│   ├── data_processing.py        # Stationarity diagnostics (ADF Test)
+│   ├── model_building.py         # PyMC Switchpoint framework configuration
+│   └── app.py                    # Flask API web server
+├── templates/
+│   └── dashboard.html            # Tailwind CSS & Chart.js analytical UI
+├── tests/
+│   ├── __init__.py
+│   └── test_data_processing.py   # Unit tests for data pipeline & ADF test
+├── .gitignore                    # Git tracking exclusion rules
+├── ANALYSIS_WORKFLOW.md          # Workflow execution guide
+├── README.md                     # Technical documentation & project guide
+└── requirements.txt              # Pin-locked project dependencies
